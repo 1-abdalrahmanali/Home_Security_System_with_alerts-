@@ -14,6 +14,9 @@ const char* TELEGRAM_ROOT_CA = "";
 #define REED_PIN 14
 #define FLAME_PIN 12
 #define BUZZER_PIN 15
+#define GAS_PIN 4
+#define SOUND_PIN 35
+#define SOUND_THRESHOLD 2300
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
@@ -21,6 +24,12 @@ const char* TELEGRAM_ROOT_CA = "";
 #define SCREEN_ADDRESS 0x3C
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+const unsigned long GAS_COOLDOWN = 60000UL;   
+const unsigned long SOUND_COOLDOWN = 30000UL; 
+
+unsigned long lastGasMillis = 0;
+unsigned long lastSoundMillis = 0;
 
 const unsigned long MOTION_COOLDOWN = 15000UL;
 const unsigned long DOOR_COOLDOWN = 10000UL;
@@ -228,6 +237,24 @@ void setup() {
 }
 
 void loop() {
+
+int gasValue = digitalRead(GAS_PIN);
+if (gasValue == HIGH && (now - lastGasMillis >= GAS_COOLDOWN)) {
+    lastGasMillis = now;
+    oledLine1 = "CRITICAL ALERT";
+    oledLine2 = "GAS LEAK!";
+    startBuzzerPattern(3, 500, 500); 
+    sendTelegram(" WARNING: Gas Leak Detected!");
+}
+
+int soundValue = analogRead(SOUND_PIN);
+if (soundValue > SOUND_THRESHOLD && (now - lastSoundMillis >= SOUND_COOLDOWN)) {
+    lastSoundMillis = now;
+    oledLine1 = "SECURITY ALERT";
+    oledLine2 = "LOUD NOISE!";
+    startBuzzerPattern(1, 2000, 0); 
+    sendTelegram("Alert: High Noise Level Detected!");
+}
   unsigned long now = millis();
 
   ensureWiFi();
